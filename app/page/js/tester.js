@@ -139,52 +139,8 @@ function sendAxesPressed(axes) {
         }
     }*/
     if (axes[3] >= 0.06 || axes[3] <= -0.06) {
-        sendOperationToArduino(convertButtonToArduino(3, true), equalizeValue(calculateServoVal(axes[3])) );
+        sendOperationToArduino(convertButtonToArduino(3, true), axes[3]);
     }
-}
-
-var oldValue = 0;
-var tolerancia = 10;
-var lastTimeEqualize = 0;
-/**
- * .
- * @param
- * @return
- */
-function equalizeValue(value) {
-    /*if ((new Date().getTime() - lastTimeEqualize) > 250) {
-        lastTimeEqualize = new Date().getTime();
-        return 0;
-    }*/
-    var diff = oldValue - value;
-    if (diff < (tolerancia * -1)) {
-        oldValue = oldValue + tolerancia;
-        return oldValue;
-    } else if (diff > tolerancia) {
-        oldValue = oldValue - tolerancia;
-        return oldValue;
-    }
-    //lastTimeEqualize = new Date().getTime();
-    return value;
-}
-
-/**
- * Convert the coordinate received from gamepad API in speed and direction
- * to the Servo.
- * This will set the speed of the servo (with 0 being full-speed in one
- * direction, 180 being full speed in the other, and a value near 90
- * being no movement).
- *
- * @see http://arduino.cc/en/Reference/ServoWrite
- *
- * @param val
- *        - a float value bettwen -1 and 1
- *
- * @return float value to be setted to servo.write(angle)
- *
- */
-function calculateServoVal(val) {
-  return (val * 90) + 90;
 }
 
 /**
@@ -213,27 +169,8 @@ function sendButtonPressed(button, value) {
  *
  */
 function sendOperationToArduino(button, value) {
-    //$.ajax({ url: 'http://localhost:8080/joystick-project-test/arduino?' + button + '=' + value.toFixed(2), cache: false });
-    //$.ajax({ url: 'http://192.168.1.199:80/?' + button + '=' + value.toFixed(4), cache: false });
-    websocketClient.sendData(button + '=' + getArduinoValue(value));
-    console.log('[' + new Date().getTime() + ']' + button + '=' + getArduinoValue(value));
-}
-
-/**
- * Retorna o valor formatado para que o arduino consiga processar corretamente.
- * @param value - valor do botao precionado
- * @return String contendo o valor no formato N.NNN
- */
-function getArduinoValue(value) {
-    var str = value.toFixed(0).toString();
-    // 999
-    if (str.length < 3) {
-        if (str.length < 2) {
-            str = '0' + str;
-        }
-        return '0' + str;
-    }
-    return str;
+    websocketClient.sendData(button + '=' + value);
+    //console.log('[' + new Date().getTime() + ']' + button + '=' + getArduinoValue(value));
 }
 
 /**

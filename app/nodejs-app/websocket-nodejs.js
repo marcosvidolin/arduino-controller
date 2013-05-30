@@ -61,9 +61,22 @@ wsServer.on('request', function(request) {
     console.log((new Date()) + ' Connection accepted.');
     connection.on('message', function(message) {
         if (message.type === 'utf8') {
-            console.log((new Date().getTime()) + ' Received Message: ' + message.utf8Data);
-            connection.sendUTF('From nodejs' + message.utf8Data);
-            socketClient.write(message.utf8Data);
+            
+            connection.sendUTF('From nodejs ' + message.utf8Data);
+
+            if (getButtonFromCommmand(message.utf8Data) == 'T') {
+                var e = equalizeCommand(message.utf8Data);
+                socketClient.write(e);
+
+                console.log((new Date().getTime()) + ' Received Message: ' + e);
+
+                startMotoresTimeout();
+            } else {
+                socketClient.write(message.utf8Data);
+                console.log((new Date().getTime()) + ' Received Message: ' + message.utf8Data);
+            }
+
+
         }
         else if (message.type === 'binary') {
             console.log('Received Binary Message of ' + message.binaryData.length + ' bytes');
@@ -74,3 +87,100 @@ wsServer.on('request', function(request) {
         console.log((new Date()) + ' Peer ' + connection.remoteAddress + ' disconnected.');
     });
 });
+
+
+/**
+ *
+ */
+var timeoutMotores;
+function startMotoresTimeout() {
+    clearTimeout(timeoutMotores);
+    timeoutMotores = setTimeout(function() {
+        // parar motores
+        socketClient.write('T=085');
+        //socketClient.write('S=085');
+        oldValue = 85;
+        console.log('MOtOR TIMEOUT');
+    }, 250);
+}
+
+/**
+ * Convert the coordinate received from gamepad API in speed and direction
+ * to the Servo.
+ * This will set the speed of the servo (with 0 being full-speed in one
+ * direction, 180 being full speed in the other, and a value near 90
+ * being no movement).
+ *
+ * @see http://arduino.cc/en/Reference/ServoWrite
+ *
+ * @param val
+ *        - a float value bettwen -1 and 1
+ *
+ * @return float value to be setted to servo.write(angle)
+ *
+ */
+function calculateServoVal(val) {
+  return (val * 90) + 90;
+}
+
+/**
+ * Obtem o valor do cammando.
+ *
+ * @param command - String comando, exemplo: "T=065"
+ *
+ * @return String valor, exemplo: "065"
+ */
+function getValueFromCommand(command) {
+    return command.slice(command.indexOf('=')+1);
+}
+
+/**
+ * Obtem o botao do cammando.
+ *
+ * @param command - String comando, exemplo: "T=065"
+ *
+ * @return String botao, exemplo: "T"
+ */
+function getButtonFromCommmand(command) {
+    return command.slice(0, command.indexOf('='));
+}
+
+/**
+ * Retorna o valor formatado para que o arduino consiga processar corretamente.
+ *
+ * @param value - valor do botao precionado
+ *
+ * @return String contendo o valor no formato N.NNN
+ */
+function getArduinoValue(value) {
+    var str = value.toFixed(0).toString();
+    // 999
+    if (str.length < 3) {
+        if (str.length < 2) {
+            str = '0' + str;
+        }
+        return '0' + str;
+    }
+    return str;
+}
+
+/**
+ * .
+ * @param
+ * @return
+ */
+var oldValue = 0;
+var tolerancia = 10;
+function equalizeCommand(command) {
+    var value = parseInt(calculateServoVal(getValueFromCommand(command)));
+    var diff = oldValue - value;
+    var button = getButtonFromCommmand(command);
+    if (diff < (tolerancia * -1)) {
+        oldValue = oldValue + tolerancia;
+        return button + '=' + getArduinoValue(oldValue);
+    } else if (diff > tolerancia) {
+        oldValue = oldValue - tolerancia;
+        return button + '=' + getArduinoValue(oldValue);
+    }
+    return button + '=' + getArduinoValue(value);
+}
